@@ -320,18 +320,18 @@
     ];
 
     // --- HARDCODE PUBLIC GAMES HERE ---
-    // When you export your data, paste it inside these brackets!
+    // Your first game is already included!
     const GAMES_DATA = [
-  {
-    "id": "1773603797980",
-    "date": "2026-03-12",
-    "time": "",
-    "team1": "CJA",
-    "team2": "Christian Academy",
-    "score1": 2,
-    "score2": 1
-  }
-];
+      {
+        "id": "1773603797980",
+        "date": "2026-03-12",
+        "time": "",
+        "team1": "CJA",
+        "team2": "Christian Academy",
+        "score1": 2,
+        "score2": 1
+      }
+    ];
     // ----------------------------------
 
     const STORAGE_KEY = "leagueStandingsGames";
@@ -339,13 +339,11 @@
     // Combine hardcoded public games with any new ones the admin is testing locally
     let localGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     
-    // Create a master list, avoiding duplicates if an ID already exists in the public list
     let publicGameIds = GAMES_DATA.map(g => g.id);
     let uniqueLocalGames = localGames.filter(g => !publicGameIds.includes(g.id));
     let games = [...GAMES_DATA, ...uniqueLocalGames];
 
     function saveGames() {
-      // We only save the locally added ones to localStorage so we don't duplicate forever
       const newlyAdded = games.filter(g => !publicGameIds.includes(g.id));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newlyAdded));
     }
@@ -481,7 +479,6 @@
           const id = button.getAttribute("data-id");
           games = games.filter(game => game.id !== id);
           
-          // If we delete a public game, we should warn them
           if(publicGameIds.includes(id)) {
             alert("Note: You deleted a publicly saved game. To remove it permanently for everyone, you must delete it from the code in GitHub.");
           }
@@ -538,17 +535,15 @@
     function clearAllGames() {
       const confirmed = confirm("Clear all locally unsaved games? (This will not delete games saved in the code)");
       if (!confirmed) return;
-      games = [...GAMES_DATA]; // Revert to only the public hardcoded games
+      games = [...GAMES_DATA]; 
       saveGames();
       renderAll();
     }
 
-    // Modal / Export logic
     function exportGames() {
       const modal = document.getElementById("exportModal");
       const textarea = document.getElementById("exportText");
       
-      // Format the games array nicely
       textarea.value = "const GAMES_DATA = " + JSON.stringify(games, null, 2) + ";";
       modal.style.display = "flex";
       textarea.select();
