@@ -231,7 +231,7 @@
 
     @media (max-width: 800px){
       .grid{
-        grid-template-columns:1fr;
+        grid-template-columns:1fr !important;
       }
       .form-row.two{
         grid-template-columns:1fr 90px;
@@ -246,7 +246,7 @@
       <p>Middle School Soccer Standings and Results</p>
     </div>
 
-    <div class="grid">
+    <div class="grid" id="mainGrid">
       <section class="card">
         <h2>Standings</h2>
         <table>
@@ -263,7 +263,7 @@
         </table>
       </section>
 
-      <section class="card">
+      <section class="card" id="adminSection" style="display: none;">
         <h2>Enter New Result</h2>
         <div class="section-body">
           <label>Date</label>
@@ -311,6 +311,17 @@
   </div>
 
   <script>
+    // --- SECRET ADMIN CHECK ---
+    // If the URL has "?admin=yes" at the end, show the panel. Otherwise, hide it and stretch the Standings.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('admin') && urlParams.get('admin') === 'yes') {
+      document.getElementById('adminSection').style.display = 'block';
+    } else {
+      document.getElementById('adminSection').style.display = 'none';
+      document.getElementById('mainGrid').style.gridTemplateColumns = '1fr'; // Makes standings full width
+    }
+    // --------------------------
+
     const TEAM_NAMES = [
       "CJA",
       "Christian Academy",
@@ -335,7 +346,6 @@
 
     const STORAGE_KEY = "leagueStandingsGames";
 
-    // Safely load local games
     let localGames = [];
     try {
       localGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -382,15 +392,11 @@
       });
 
       games.forEach(game => {
-        // Crash Prevention: Ignore bad or corrupted game data
         if (!game || typeof game !== 'object') return;
         
         const { team1, team2, score1, score2 } = game;
-        
-        // Crash Prevention: Ignore games with missing teams or teams not in our list
         if (!standings[team1] || !standings[team2]) return;
 
-        // Make sure scores are numbers
         const s1 = parseInt(score1, 10);
         const s2 = parseInt(score2, 10);
         if (isNaN(s1) || isNaN(s2)) return;
@@ -439,7 +445,6 @@
         const tbody = document.getElementById("standingsBody");
         tbody.innerHTML = "";
 
-        // Safe fallback if the standings array somehow comes back empty
         if (standings.length === 0) return;
 
         const leader = standings[0];
@@ -481,19 +486,23 @@
         list.className = "results-list";
 
         sortedGames.forEach((game) => {
-          // Double check we have valid team names to avoid empty items
           if (!game.team1 || !game.team2) return;
 
           const li = document.createElement("li");
           li.className = "results-item";
 
           const dateLine = [game.date, game.time].filter(Boolean).join(" • ");
+          
+          // Only show the delete button if they are an admin
+          const isAdmin = urlParams.has('admin') && urlParams.get('admin') === 'yes';
+          const deleteBtnHtml = isAdmin ? `<button class="delete-btn" data-id="${game.id}">Delete</button>` : '';
+
           li.innerHTML = `
             <div class="results-main">
               <div class="results-score">${game.team1} ${game.score1} - ${game.score2} ${game.team2}</div>
               <div class="muted">${dateLine || "No date entered"}</div>
             </div>
-            <button class="delete-btn" data-id="${game.id}">Delete</button>
+            ${deleteBtnHtml}
           `;
 
           list.appendChild(li);
