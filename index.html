@@ -214,13 +214,6 @@
       margin-top:18px;
     }
 
-    .two-col-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-top: 18px;
-    }
-
     /* Modal for Exporting Data */
     .modal-overlay {
       display: none;
@@ -239,9 +232,6 @@
     @media (max-width: 800px){
       .grid{
         grid-template-columns:1fr !important;
-      }
-      .two-col-layout {
-        grid-template-columns: 1fr;
       }
       .form-row.two{
         grid-template-columns:1fr 90px;
@@ -305,25 +295,24 @@
       </section>
     </div>
 
-    <div class="two-col-layout">
-      <section class="card">
-        <h2>Upcoming Schedule</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th style="text-align: left;">Matchup</th>
-            </tr>
-          </thead>
-          <tbody id="scheduleBody"></tbody>
-        </table>
-      </section>
+    <section class="card full-width">
+      <h2>Upcoming Schedule</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th style="text-align: left;">Matchup</th>
+          </tr>
+        </thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+    </section>
 
-      <section class="card">
-        <h2>Previous Games</h2>
-        <div id="resultsContainer"></div>
-      </section>
-    </div>
+    <section class="card full-width">
+      <h2>Previous Games</h2>
+      <div id="resultsContainer"></div>
+    </section>
+
   </div>
 
   <div class="modal-overlay" id="exportModal">
@@ -355,27 +344,28 @@
     ];
 
     // --- FULL SEASON SCHEDULE ---
+    // Added specific dates to allow auto-matching with the results.
     const SCHEDULE_DATA = [
-      { date: "March 12", matchup: "CJA vs Christian Academy" },
-      { date: "March 17", matchup: "CJA vs Conway Christian" },
-      { date: "March 18", matchup: "Calvary vs CJA" },
-      { date: "March 19", matchup: "Calvary vs Conway Christian" },
-      { date: "March 23", matchup: "Calvary vs Palmetto Academy" },
-      { date: "March 25", matchup: "Palmetto Academy vs CJA" },
-      { date: "March 26", matchup: "Calvary vs Christian Academy" },
-      { date: "March 27", matchup: "CJA vs Conway Christian" },
-      { date: "March 31", matchup: "Palmetto Academy vs CJA" },
-      { date: "March 31", matchup: "Conway Christian vs Christian Academy" },
-      { date: "April 1", matchup: "Palmetto Academy vs Conway Christian" },
-      { date: "April 2", matchup: "Palmetto Academy vs Christian Academy" },
-      { date: "April 13", matchup: "Calvary vs Conway Christian" },
-      { date: "April 15", matchup: "Calvary vs Christian Academy" },
-      { date: "April 16", matchup: "Calvary vs CJA" },
-      { date: "April 16", matchup: "Conway Christian vs Christian Academy" },
-      { date: "April 22", matchup: "Palmetto Academy vs Calvary" },
-      { date: "April 23", matchup: "CJA vs Christian Academy" },
-      { date: "April 27", matchup: "Palmetto Academy vs Conway Christian" },
-      { date: "April 29", matchup: "Palmetto Academy vs Christian Academy" }
+      { date: "2026-03-12", team1: "CJA", team2: "Christian Academy" },
+      { date: "2026-03-17", team1: "CJA", team2: "Conway Christian" },
+      { date: "2026-03-18", team1: "Calvary", team2: "CJA" },
+      { date: "2026-03-19", team1: "Calvary", team2: "Conway Christian" },
+      { date: "2026-03-23", team1: "Calvary", team2: "Palmetto Academy" },
+      { date: "2026-03-25", team1: "Palmetto Academy", team2: "CJA" },
+      { date: "2026-03-26", team1: "Calvary", team2: "Christian Academy" },
+      { date: "2026-03-27", team1: "CJA", team2: "Conway Christian" },
+      { date: "2026-03-31", team1: "Palmetto Academy", team2: "CJA" },
+      { date: "2026-03-31", team1: "Conway Christian", team2: "Christian Academy" },
+      { date: "2026-04-01", team1: "Palmetto Academy", team2: "Conway Christian" },
+      { date: "2026-04-02", team1: "Palmetto Academy", team2: "Christian Academy" },
+      { date: "2026-04-13", team1: "Calvary", team2: "Conway Christian" },
+      { date: "2026-04-15", team1: "Calvary", team2: "Christian Academy" },
+      { date: "2026-04-16", team1: "Calvary", team2: "CJA" },
+      { date: "2026-04-16", team1: "Conway Christian", team2: "Christian Academy" },
+      { date: "2026-04-22", team1: "Calvary", team2: "Palmetto Academy" },
+      { date: "2026-04-23", team1: "CJA", team2: "Christian Academy" },
+      { date: "2026-04-27", team1: "Palmetto Academy", team2: "Conway Christian" },
+      { date: "2026-04-29", team1: "Palmetto Academy", team2: "Christian Academy" }
     ];
     // ----------------------------
 
@@ -410,6 +400,15 @@
     function saveGames() {
       const newlyAdded = games.filter(g => g && !publicGameIds.includes(g.id));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newlyAdded));
+    }
+
+    // Helper function to turn "2026-03-17" into "March 17"
+    function formatFriendlyDate(dateString) {
+      if (!dateString) return "No date";
+      const parts = dateString.split("-");
+      if (parts.length !== 3) return dateString;
+      const d = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     }
 
     function populateTeamSelects() {
@@ -521,16 +520,27 @@
         const tbody = document.getElementById("scheduleBody");
         tbody.innerHTML = "";
 
-        if (!SCHEDULE_DATA || SCHEDULE_DATA.length === 0) {
+        // SMART FILTER: Remove any games from the schedule that already have a result entered
+        const upcomingGames = SCHEDULE_DATA.filter(scheduled => {
+          const hasBeenPlayed = games.some(played => 
+            played.date === scheduled.date &&
+            ((played.team1 === scheduled.team1 && played.team2 === scheduled.team2) || 
+             (played.team1 === scheduled.team2 && played.team2 === scheduled.team1))
+          );
+          return !hasBeenPlayed; // Keep it in the schedule only if it HASN'T been played
+        });
+
+        if (upcomingGames.length === 0) {
           tbody.innerHTML = `<tr><td colspan="2" class="empty">No upcoming games scheduled.</td></tr>`;
           return;
         }
 
-        SCHEDULE_DATA.forEach(game => {
+        upcomingGames.forEach(game => {
           const tr = document.createElement("tr");
+          const friendlyDate = formatFriendlyDate(game.date);
           tr.innerHTML = `
-            <td>${game.date}</td>
-            <td style="text-align: left; font-weight: 700; color: var(--navy);">${game.matchup}</td>
+            <td>${friendlyDate}</td>
+            <td style="text-align: left; font-weight: 700; color: var(--navy);">${game.team1} vs ${game.team2}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -551,7 +561,7 @@
         const sortedGames = [...games].filter(g => g && typeof g === 'object').sort((a, b) => {
           const aValue = `${a.date || ""} ${a.time || ""}`.trim();
           const bValue = `${b.date || ""} ${b.time || ""}`.trim();
-          return bValue.localeCompare(aValue);
+          return bValue.localeCompare(aValue); // Most recent at the top
         });
 
         const list = document.createElement("ul");
@@ -563,8 +573,8 @@
           const li = document.createElement("li");
           li.className = "results-item";
 
-          // Only show date since we removed times
-          const dateLine = game.date || "No date entered";
+          // Format the date so it matches the schedule format nicely
+          const dateLine = formatFriendlyDate(game.date);
           
           const isAdmin = urlParams.has('admin') && urlParams.get('admin') === 'yes';
           const deleteBtnHtml = isAdmin ? `<button class="delete-btn" data-id="${game.id}">Delete</button>` : '';
