@@ -214,6 +214,13 @@
       margin-top:18px;
     }
 
+    .two-col-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
     /* Modal for Exporting Data */
     .modal-overlay {
       display: none;
@@ -232,6 +239,9 @@
     @media (max-width: 800px){
       .grid{
         grid-template-columns:1fr !important;
+      }
+      .two-col-layout {
+        grid-template-columns: 1fr;
       }
       .form-row.two{
         grid-template-columns:1fr 90px;
@@ -295,10 +305,25 @@
       </section>
     </div>
 
-    <section class="card full-width">
-      <h2>Previous Games</h2>
-      <div id="resultsContainer"></div>
-    </section>
+    <div class="two-col-layout">
+      <section class="card">
+        <h2>Upcoming Schedule</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th style="text-align: left;">Matchup</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Previous Games</h2>
+        <div id="resultsContainer"></div>
+      </section>
+    </div>
   </div>
 
   <div class="modal-overlay" id="exportModal">
@@ -312,13 +337,12 @@
 
   <script>
     // --- SECRET ADMIN CHECK ---
-    // If the URL has "?admin=yes" at the end, show the panel. Otherwise, hide it and stretch the Standings.
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('admin') && urlParams.get('admin') === 'yes') {
       document.getElementById('adminSection').style.display = 'block';
     } else {
       document.getElementById('adminSection').style.display = 'none';
-      document.getElementById('mainGrid').style.gridTemplateColumns = '1fr'; // Makes standings full width
+      document.getElementById('mainGrid').style.gridTemplateColumns = '1fr'; 
     }
     // --------------------------
 
@@ -329,6 +353,31 @@
       "Palmetto Academy",
       "Calvary"
     ];
+
+    // --- FULL SEASON SCHEDULE ---
+    const SCHEDULE_DATA = [
+      { date: "March 12", matchup: "CJA vs Christian Academy" },
+      { date: "March 17", matchup: "CJA vs Conway Christian" },
+      { date: "March 18", matchup: "Calvary vs CJA" },
+      { date: "March 19", matchup: "Calvary vs Conway Christian" },
+      { date: "March 23", matchup: "Calvary vs Palmetto Academy" },
+      { date: "March 25", matchup: "Palmetto Academy vs CJA" },
+      { date: "March 26", matchup: "Calvary vs Christian Academy" },
+      { date: "March 27", matchup: "CJA vs Conway Christian" },
+      { date: "March 31", matchup: "Palmetto Academy vs CJA" },
+      { date: "March 31", matchup: "Conway Christian vs Christian Academy" },
+      { date: "April 1", matchup: "Palmetto Academy vs Conway Christian" },
+      { date: "April 2", matchup: "Palmetto Academy vs Christian Academy" },
+      { date: "April 13", matchup: "Calvary vs Conway Christian" },
+      { date: "April 15", matchup: "Calvary vs Christian Academy" },
+      { date: "April 16", matchup: "Calvary vs CJA" },
+      { date: "April 16", matchup: "Conway Christian vs Christian Academy" },
+      { date: "April 22", matchup: "Palmetto Academy vs Calvary" },
+      { date: "April 23", matchup: "CJA vs Christian Academy" },
+      { date: "April 27", matchup: "Palmetto Academy vs Conway Christian" },
+      { date: "April 29", matchup: "Palmetto Academy vs Christian Academy" }
+    ];
+    // ----------------------------
 
     // --- HARDCODE PUBLIC GAMES HERE ---
     const GAMES_DATA = [
@@ -467,6 +516,29 @@
       }
     }
 
+    function renderSchedule() {
+      try {
+        const tbody = document.getElementById("scheduleBody");
+        tbody.innerHTML = "";
+
+        if (!SCHEDULE_DATA || SCHEDULE_DATA.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="2" class="empty">No upcoming games scheduled.</td></tr>`;
+          return;
+        }
+
+        SCHEDULE_DATA.forEach(game => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${game.date}</td>
+            <td style="text-align: left; font-weight: 700; color: var(--navy);">${game.matchup}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error("Schedule crash prevented:", error);
+      }
+    }
+
     function renderResults() {
       try {
         const container = document.getElementById("resultsContainer");
@@ -491,16 +563,16 @@
           const li = document.createElement("li");
           li.className = "results-item";
 
-          const dateLine = [game.date, game.time].filter(Boolean).join(" • ");
+          // Only show date since we removed times
+          const dateLine = game.date || "No date entered";
           
-          // Only show the delete button if they are an admin
           const isAdmin = urlParams.has('admin') && urlParams.get('admin') === 'yes';
           const deleteBtnHtml = isAdmin ? `<button class="delete-btn" data-id="${game.id}">Delete</button>` : '';
 
           li.innerHTML = `
             <div class="results-main">
               <div class="results-score">${game.team1} ${game.score1} - ${game.score2} ${game.team2}</div>
-              <div class="muted">${dateLine || "No date entered"}</div>
+              <div class="muted">${dateLine}</div>
             </div>
             ${deleteBtnHtml}
           `;
@@ -531,12 +603,12 @@
 
     function renderAll() {
       renderStandings();
+      renderSchedule();
       renderResults();
     }
 
     function addGame() {
       const date = document.getElementById("gameDate").value;
-      const time = document.getElementById("gameTime").value;
       const team1 = document.getElementById("team1").value;
       const team2 = document.getElementById("team2").value;
       const score1 = parseInt(document.getElementById("score1").value, 10);
@@ -555,7 +627,7 @@
       const game = {
         id: String(Date.now()),
         date,
-        time,
+        time: "",
         team1,
         team2,
         score1,
@@ -570,7 +642,6 @@
 
     function clearForm() {
       document.getElementById("gameDate").value = "";
-      document.getElementById("gameTime").value = "";
       document.getElementById("score1").value = "";
       document.getElementById("score2").value = "";
       document.getElementById("team1").selectedIndex = 0;
